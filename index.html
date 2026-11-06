@@ -104,6 +104,15 @@ textarea.input-answer{min-height:120px;resize:vertical}
 #pastPapers select{color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px}
 #pastQuestionText{overflow-wrap:anywhere;line-height:1.55}
 #pastPrompt{scroll-margin-top:70px}
+.diagram-board{position:relative;height:480px;border:1px solid var(--border);border-radius:10px;background:var(--bg);overflow:hidden}
+.diagram-board svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.diagram-node{position:absolute;transform:translate(-50%,-50%);width:22%;min-height:44px;padding:5px;border:2px solid var(--accent);background:var(--panel2);color:var(--text);overflow-wrap:anywhere}
+.diagram-node[data-shape="Start / End"]{border-radius:28px}
+.diagram-node[data-shape="Decision"]{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);min-height:68px;padding:8px 20%;padding-inline:12px;background:var(--panel2)}
+.diagram-node[data-shape="Decision"][aria-pressed="true"]{background:#594a28}
+.diagram-node[data-shape="Input / Output"]{border-radius:0 14px}
+.diagram-node[aria-pressed="true"]{outline:3px solid var(--warn)}
+.diagram-label{max-width:100%;min-height:44px;color:var(--text);background:var(--bg);border:1px solid var(--border);padding:8px}
 </style>
 <style>
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
@@ -165,7 +174,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 
   <section id="pastPapers" class="card qwrap hidden" aria-labelledby="pastHeading">
     <h2 id="pastHeading" tabindex="-1">Past papers in order</h2>
-    <p class="sub">Read each question and type your answer below. Open the official OCR paper to see the original layout, diagrams and tables. For diagrams, use paper and mark them alongside your typed answers.</p>
+    <p class="sub">Read each question and type your answer below. Open the official OCR paper to see the original layout, diagrams and tables. For drawing questions, use the diagram builder or draw on paper.</p>
     <div class="controls">
       <label>Paper <select id="pastYear"></select></label>
       <button id="pastPractice" class="btn">Practise in order</button>
@@ -182,6 +191,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <h3 id="pastPrompt" tabindex="-1"></h3>
       <pre id="pastQuestionText" class="code"></pre>
       <div id="pastTables"></div>
+      <div id="pastDiagram" class="hidden"></div>
       <label for="pastAnswer" id="pastAnswerLabel">Your answer</label>
       <textarea id="pastAnswer" class="input-answer" spellcheck="false"></textarea>
       <div class="controls">
@@ -1012,7 +1022,7 @@ function renderPastTables(label){
   target.replaceChildren();
   const tables = pastTables[pastYear][label] ?? [];
   const existing = pastAttempt.answers[label] ?? "";
-  const showNotes = !tables.length || Boolean(existing);
+  const showNotes = (!tables.length && !diagramQuestions[pastYear]?.[label]) || Boolean(existing);
   el("pastAnswerLabel").classList.toggle("hidden", !showNotes);
   el("pastAnswer").classList.toggle("hidden", !showNotes);
 
@@ -1145,6 +1155,7 @@ function renderPast(){
   el("pastAnswer").value = pastAttempt.answers[label] ?? "";
   el("pastAnswer").readOnly = pastAttempt.finished;
   renderPastTables(label);
+  renderPastDiagram(label);
   updatePastProgress();
   el("pastPrevious").disabled = pastIndex === 0;
   el("pastNext").disabled = pastIndex === pastParts().length - 1;
@@ -1207,8 +1218,198 @@ el("pastSubmit").addEventListener("click", () => {
 el("pastRestart").addEventListener("click", () => {
   if (confirm("Replace your saved answers and marks for this paper and mode?")) newPastAttempt();
 });
+const diagramQuestions = {
+  2022: {"2ai":"logic","2b":"flow"},
+  2023: {"4a":"logic"},
+  2024: {"2":"flow","5b":"logic"},
+  2025: {"5a":"logic"}
+};
+const diagramShapes = {
+  flow:["Start / End","Process","Decision","Input / Output"],
+  logic:["Input","AND","OR","NOT","XOR","Output"]
+};
+
+function renderPastDiagram(label){
+  const target = el("pastDiagram");
+  const kind = diagramQuestions[pastYear]?.[label];
+  target.replaceChildren();
+  target.classList.toggle("hidden", !kind);
+  if (!kind) return;
+  const diagram = pastAttempt.diagrams?.[label] ?? {nodes:[],links:[],next:1};
+  const locked = pastAttempt.finished;
+  let selected, placing, connecting;
+  function persist(){
+    (pastAttempt.diagrams ??= {})[label] = diagram;
+    savePast();
+    updatePastProgress();
+  }
+  function button(text, action){
+    const b = document.createElement("button");
+    b.className = "btn";
+    b.textContent = text;
+    b.addEventListener("click", action);
+    return b;
+  }
+  const instructions = document.createElement("p");
+  instructions.className = "sub";
+  instructions.textContent = locked ? "Your submitted diagram" :
+    "Drag a shape onto the board, or tap a shape then tap where it goes. Select a shape to label, move or connect it.";
+  const bank = document.createElement("div");
+  bank.className = "controls";
+  const board = document.createElement("div");
+  board.className = "diagram-board";
+  board.setAttribute("aria-label","Diagram board");
+  const tools = document.createElement("div");
+  tools.className = "controls";
+  const status = document.createElement("p");
+  status.setAttribute("role","status");
+  const input = document.createElement("input");
+  input.className = "diagram-label";
+  input.placeholder = "Shape label";
+  input.setAttribute("aria-label","Shape label");
+  input.maxLength = 80;
+  const arrowLabel = document.createElement("input");
+  arrowLabel.className = "diagram-label";
+  arrowLabel.placeholder = "Arrow label (optional)";
+  arrowLabel.setAttribute("aria-label","Arrow label");
+  arrowLabel.maxLength = 24;
+  function canEdit(){
+    tickPast();
+    return !pastAttempt.finished;
+  }
+  function position(event){
+    const rect = board.getBoundingClientRect();
+    return {
+      x:Math.max(12,Math.min(88,100*(event.clientX-rect.left)/rect.width)),
+      y:Math.max(6,Math.min(94,100*(event.clientY-rect.top)/rect.height))
+    };
+  }
+  function place(shape, event){
+    if (!canEdit()) return;
+    if (diagram.nodes.length >= 24) {
+      status.textContent = "Board is full. Remove a shape before adding another.";
+      return;
+    }
+    selected = {id:diagram.next++,shape,text:kind === "logic" && !["Input","Output"].includes(shape) ? shape : "",...position(event)};
+    diagram.nodes.push(selected);
+    placing = null;
+    persist();
+    draw();
+  }
+  function choose(node){
+    if (locked || !canEdit()) return;
+    if (connecting && selected && selected !== node) {
+      if (!diagram.links.some(link => link.from === selected.id && link.to === node.id))
+        diagram.links.push({from:selected.id,to:node.id,text:arrowLabel.value.trim()});
+      persist();
+    }
+    connecting = false;
+    placing = null;
+    selected = node;
+    draw();
+  }
+  function draw(){
+    board.replaceChildren();
+    const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+    svg.setAttribute("viewBox","0 0 1000 1000");
+    svg.setAttribute("preserveAspectRatio","none");
+    svg.setAttribute("aria-hidden","true");
+    const nodes = new Map(diagram.nodes.map(node => [node.id,node]));
+    const svgItem = (name, attributes) => {
+      const item = document.createElementNS(svg.namespaceURI,name);
+      Object.entries(attributes).forEach(([key,value]) => item.setAttribute(key,value));
+      svg.append(item);
+      return item;
+    };
+    diagram.links.forEach(({from,to,text}) => {
+      const a = nodes.get(from), b = nodes.get(to);
+      const dx = (b.x-a.x)*10, dy = (b.y-a.y)*10;
+      const scale = Math.max(Math.abs(dx)/115,Math.abs(dy)/52,1);
+      const x = b.x*10-dx/scale, y = b.y*10-dy/scale;
+      const angle = Math.atan2(dy,dx)*180/Math.PI;
+      svgItem("line",{x1:a.x*10,y1:a.y*10,x2:x,y2:y,stroke:"#b8c8ff","stroke-width":3});
+      svgItem("path",{d:"M 0 0 L -18 -12 L -18 12 Z",transform:`translate(${x} ${y}) rotate(${angle})`,fill:"#b8c8ff"});
+      if (text) svgItem("text",{x:(a.x+b.x)*5+9,y:(a.y+b.y)*5-8,fill:"#fff","font-size":25}).textContent = text;
+    });
+    board.append(svg);
+    diagram.nodes.forEach(node => {
+      const item = button(node.text || node.shape, () => choose(node));
+      item.className = "diagram-node";
+      item.dataset.shape = node.shape;
+      item.style.left = `${node.x}%`;
+      item.style.top = `${node.y}%`;
+      item.setAttribute("aria-pressed",String(node === selected));
+      item.disabled = locked;
+      item.draggable = !locked;
+      item.addEventListener("dragstart", event => event.dataTransfer.setData("text/plain",`node:${node.id}`));
+      board.append(item);
+    });
+    input.value = selected?.text ?? "";
+    tools.hidden = locked || !selected;
+    tools.classList.toggle("hidden",tools.hidden);
+  }
+  if (!locked) diagramShapes[kind].forEach(shape => {
+    const item = button(shape, () => {
+      placing = shape;
+      connecting = false;
+      status.textContent = `Tap the board to place ${shape}.`;
+    });
+    item.draggable = true;
+    item.addEventListener("dragstart", event => event.dataTransfer.setData("text/plain",`shape:${shape}`));
+    bank.append(item);
+  });
+  board.addEventListener("dragover",event => { if (!locked) event.preventDefault(); });
+  board.addEventListener("drop",event => {
+    event.preventDefault();
+    if (!canEdit()) return;
+    const [type,value] = event.dataTransfer.getData("text/plain").split(":");
+    if (type === "shape" && diagramShapes[kind].includes(value)) place(value,event);
+    if (type === "node") {
+      selected = diagram.nodes.find(node => node.id === Number(value));
+      if (!selected) return;
+      Object.assign(selected,position(event));
+      persist();
+      draw();
+    }
+  });
+  board.addEventListener("click",event => {
+    if (event.target !== board || !canEdit()) return;
+    if (placing) place(placing,event);
+    else if (selected && !connecting) {
+      Object.assign(selected,position(event));
+      persist();
+      draw();
+    }
+  });
+  input.addEventListener("input",() => {
+    if (!selected || !canEdit()) return;
+    selected.text = input.value;
+    board.querySelector('[aria-pressed="true"]').textContent = selected.text || selected.shape;
+    persist();
+  });
+  tools.append(input,arrowLabel,button("Connect arrow",() => {
+    connecting = true;
+    placing = null;
+    status.textContent = "Tap the shape where this arrow should end.";
+  }),button("Remove outgoing arrows",() => {
+    if (!canEdit()) return;
+    diagram.links = diagram.links.filter(link => link.from !== selected.id);
+    persist();
+    draw();
+  }),button("Remove shape",() => {
+    if (!canEdit()) return;
+    diagram.nodes = diagram.nodes.filter(node => node !== selected);
+    diagram.links = diagram.links.filter(link => link.from !== selected.id && link.to !== selected.id);
+    selected = null;
+    persist();
+    draw();
+  }));
+  target.append(instructions,bank,board,tools,status);
+  draw();
+}
+
 function answeredPastParts(){
-  return pastParts().filter(([label]) => pastAttempt.answers[label]?.trim() ||
+  return pastParts().filter(([label]) => pastAttempt.answers[label]?.trim() || pastAttempt.diagrams?.[label]?.nodes.length ||
     Object.values(pastAttempt.cells?.[label] ?? {}).some(value => String(value || "").trim())).length;
 }
 
@@ -1220,6 +1421,13 @@ function exportPastMarking(){
   const [paper, scheme] = pastPapers[pastYear];
   const parts = pastParts().map(([label, marks]) => {
     const answers = [pastAttempt.answers[label]?.trim()].filter(Boolean);
+    const diagram = pastAttempt.diagrams?.[label];
+    if (diagram?.nodes.length) {
+      answers.push("Diagram shapes: " + diagram.nodes.map(node =>
+        `${node.id}: ${node.shape} ${JSON.stringify(node.text)}`).join(", "));
+      answers.push("Diagram connections: " + diagram.links.map(link =>
+        `${link.from} -> ${link.to} ${JSON.stringify(link.text)}`).join(", "));
+    }
     const cells = pastAttempt.cells?.[label] ?? {};
     (pastTables[pastYear][label] ?? []).forEach(({headers, rows, type}, t) => {
       const entries = rows.map((row, r) => row.map((fixed, c) => {
