@@ -58,6 +58,8 @@ textarea.input-answer{min-height:120px;resize:vertical}
 .mastery{height:8px;background:#0e1530;border-radius:99px;overflow:hidden;margin-top:8px}
 .mastery span{display:block;height:100%;background:var(--good)}
 .footer{color:var(--muted);font-size:13px;margin:18px 0 6px;text-align:center}
+#examChoices .option[aria-pressed="true"]:not(:disabled){border-color:var(--accent);background:var(--panel2);box-shadow:inset 0 0 0 1px var(--accent)}
+#examCard .btn:disabled{opacity:.5;cursor:default}
 .hidden{display:none!important}
 @media(max-width:720px){.hero{grid-template-columns:1fr}.question{font-size:19px}.wrap{padding:12px}}
 
@@ -124,7 +126,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <p class="sub">A light-hearted quiz game covering every main skill tested on the paper. The answers and explanations are checked against OCR’s June 2023 mark scheme. Use hints if you get stuck, build a streak and level up weak topics until they turn green.</p>
       <div class="progress"><div id="overallBar" class="bar"></div></div>
       <div class="controls">
-        <button id="startBtn" class="btn primary">Start quest</button>
+        <button id="startBtn" class="btn primary">Practice Mode</button>
+        <button id="examBtn" class="btn">Exam Mode</button>
         <button id="weakBtn" class="btn">Practise weak topics</button>
         <button id="hardBtn" class="btn warn">Hard Mode</button>
         <button id="resetBtn" class="btn">Reset progress</button>
@@ -145,6 +148,25 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     <div id="topics" class="topic-grid"></div>
   </section>
 
+  <section id="examCard" class="card qwrap hidden" aria-labelledby="examHeading">
+    <h2 id="examHeading" tabindex="-1">Exam Mode</h2>
+    <p class="sub">40 multiple-choice questions worth 2 marks each. You have 90 minutes.
+      You can revisit answers before submitting. Your score and corrections appear after submission.</p>
+    <button id="beginExam" class="btn primary">Start 80-mark exam</button>
+    <div id="examPaper" class="hidden">
+      <p id="examTime" role="timer"></p>
+      <p id="examCount" class="sub"></p>
+      <h3 id="examQuestion" class="question" tabindex="-1"></h3>
+      <div id="examChoices"></div>
+      <p id="examCorrection" class="feedback hidden"></p>
+      <div class="controls">
+        <button id="examBack" class="btn">Previous question</button>
+        <button id="examNext" class="btn">Next question</button>
+        <button id="submitExam" class="btn primary">Submit exam</button>
+      </div>
+    </div>
+    <h3 id="examResult" role="status"></h3>
+  </section>
   <section id="quizCard" class="card qwrap hidden">
     <div class="qhead">
       <div>
@@ -438,6 +460,7 @@ function renderStats(){
 }
 function shuffled(a){return [...a].sort(()=>Math.random()-.5)}
 function start(mode="all"){
+ el("examCard").classList.add("hidden");
  state.mode=mode; idx=0;
  if(mode==="weak"){
    const weak=topicNames.filter(t=>state.mastery[t].a===0||masteryPct(t)<80);
@@ -461,11 +484,11 @@ function show(){
  el("nextBtn").classList.add("hidden"); el("hintBtn").classList.remove("hidden"); el("hintBtn").disabled=false; el("checkBtn").classList.add("hidden");
  el("codeBlock").classList.add("hidden");
  el("answerArea").innerHTML=current.o.map((x,i)=>`<button class="option" data-i="${i}">${String.fromCharCode(65+i)}. ${x}</button>`).join("");
- document.querySelectorAll(".option").forEach(b=>b.addEventListener("click",()=>answer(Number(b.dataset.i),b)));
+ document.querySelectorAll("#answerArea .option").forEach(b=>b.addEventListener("click",()=>answer(Number(b.dataset.i),b)));
 }
 function answer(choice,btn){
  if(locked)return; locked=true;
- document.querySelectorAll(".option").forEach((b,i)=>{b.disabled=true;if(i===current.a)b.classList.add("correct");});
+ document.querySelectorAll("#answerArea .option").forEach((b,i)=>{b.disabled=true;if(i===current.a)b.classList.add("correct");});
  const good=choice===current.a; if(!good)btn.classList.add("wrong");
  state.answered++; state.mastery[current.t].a++;
  if(good){state.correct++;state.streak++;state.mastery[current.t].c++;state.xp+=hintUsed?8:10;}
@@ -491,6 +514,7 @@ el("resetBtn").addEventListener("click",()=>{
 renderStats();
 
 function showHard(){
+  el("examCard").classList.add("hidden");
   el("hardSection").classList.remove("hidden");
   el("quizCard").classList.add("hidden");
   el("hardSection").scrollIntoView({behavior:"smooth",block:"start"});
@@ -744,6 +768,124 @@ el("checkBigAverage").addEventListener("click",()=>{
 });
 
 generateBigQuestion();
+
+const examQuestions = [...questions,
+  {q:"What is the value of 17 DIV 5?", o:["2", "3", "3.4", "4"], a:1,
+   e:"DIV gives the integer quotient. Five fits into 17 three times."},
+  {q:"An array has 8 items and starts at index 0. What is the last valid index?",
+   o:["6", "7", "8", "9"], a:1, e:"The indices run from 0 to 7."},
+  {q:"Which SQL keyword sorts query results?", o:["WHERE", "FROM", "ORDER BY", "SELECT"],
+   a:2, e:"ORDER BY sorts the returned rows by the specified field or fields."}
+];
+const examKey = "j277questExamV1";
+const marksPerQuestion = 2;
+const totalExamMarks = examQuestions.length * marksPerQuestion;
+let exam = null;
+try {
+  exam = JSON.parse(localStorage.getItem(examKey));
+} catch {}
+let examIndex = 0;
+let examClock;
+
+function saveExam(){
+  try {
+    localStorage.setItem(examKey, JSON.stringify(exam));
+  } catch {}
+}
+
+function tickExam(){
+  if (!exam || exam.finished) return;
+  const seconds = Math.max(0, Math.ceil((exam.deadline - Date.now()) / 1000));
+  el("examTime").textContent = `Time left: ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+  if (seconds === 0) finishExam(true);
+}
+
+function finishExam(timedOut){
+  exam.finished = true;
+  exam.timedOut = timedOut;
+  clearInterval(examClock);
+  saveExam();
+  renderExam();
+}
+
+function renderExam(){
+  el("examPaper").classList.toggle("hidden", !exam);
+  el("beginExam").classList.toggle("hidden", Boolean(exam && !exam.finished));
+  el("beginExam").textContent = exam ? "Start a new exam" : "Start 80-mark exam";
+  if (!exam) return;
+
+  const question = examQuestions[examIndex];
+  const selected = exam.answers[examIndex];
+  el("examCount").textContent = `Question ${examIndex + 1} of ${examQuestions.length} · ${marksPerQuestion} marks · ${exam.answers.filter(a => a !== null).length} answered`;
+  el("examQuestion").textContent = question.q;
+  el("examChoices").replaceChildren(...question.o.map((choice, index) => {
+    const button = document.createElement("button");
+    button.className = "option";
+    button.textContent = choice;
+    button.setAttribute("aria-pressed", String(index === selected));
+    button.classList.toggle("correct", exam.finished && index === question.a);
+    button.classList.toggle("wrong", exam.finished && index === selected && index !== question.a);
+    button.disabled = exam.finished;
+    button.addEventListener("click", () => {
+      tickExam();
+      if (exam.finished) return;
+      exam.answers[examIndex] = index;
+      saveExam();
+      renderExam();
+      el("examChoices").children[index].focus({preventScroll:true});
+    });
+    return button;
+  }));
+  el("examBack").disabled = examIndex === 0;
+  el("examNext").disabled = examIndex === examQuestions.length - 1;
+  el("submitExam").classList.toggle("hidden", exam.finished);
+  el("examTime").classList.toggle("hidden", exam.finished);
+  el("examCorrection").classList.toggle("hidden", !exam.finished);
+
+  if (exam.finished) {
+    const score = exam.answers.filter((answer, index) => answer === examQuestions[index].a).length * marksPerQuestion;
+    el("examResult").textContent = `${exam.timedOut ? "Time’s up. " : ""}Score: ${score}/${totalExamMarks}`;
+    const feedback = selected === null ? "Unanswered." : selected === question.a ? "Correct." : "Incorrect.";
+    el("examCorrection").textContent = `${feedback} Correct answer: ${question.o[question.a]}. ${question.e}`;
+  } else {
+    el("examResult").textContent = "";
+    tickExam();
+  }
+}
+
+function moveExam(offset){
+  examIndex += offset;
+  renderExam();
+  el("examQuestion").focus();
+}
+
+el("examBtn").addEventListener("click", () => {
+  el("quizCard").classList.add("hidden");
+  el("hardSection").classList.add("hidden");
+  el("examCard").classList.remove("hidden");
+  renderExam();
+  el("examHeading").focus();
+});
+el("beginExam").addEventListener("click", () => {
+  exam = {deadline: Date.now() + 90 * 60 * 1000, answers: examQuestions.map(() => null),
+          finished: false, timedOut: false};
+  examIndex = 0;
+  saveExam();
+  renderExam();
+  examClock = setInterval(tickExam, 1000);
+  el("examQuestion").focus();
+});
+el("examBack").addEventListener("click", () => moveExam(-1));
+el("examNext").addEventListener("click", () => moveExam(1));
+el("submitExam").addEventListener("click", () => {
+  tickExam();
+  if (exam.finished || !confirm("Submit your answers and see your score?")) return;
+  finishExam(Date.now() >= exam.deadline);
+});
+if (exam && !exam.finished) {
+  examClock = setInterval(tickExam, 1000);
+  tickExam();
+}
 </script>
 <script>
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
