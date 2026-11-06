@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OCR J277/02 Revision Quest</title>
+<meta name="theme-color" content="#0b1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Revision Quest">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#0b1020; --panel:#151c33; --panel2:#1b2544; --text:#eef3ff;
+  --muted:#aebbd8; --accent:#7c9cff; --good:#46d39a; --bad:#ff6f7d;
+  --warn:#ffd66b; --border:#2b385f;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#0b1020,#111830);color:var(--text);min-height:100vh}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.wrap{max-width:1050px;margin:auto;padding:20px}
+.hero{display:grid;grid-template-columns:1.4fr .6fr;gap:16px;align-items:stretch}
+.card{background:rgba(21,28,51,.96);border:1px solid var(--border);border-radius:18px;padding:18px}
+h1{margin:0 0 8px;font-size:clamp(28px,5vw,48px)}
+h2,h3{margin-top:0}
+.sub{color:var(--muted);line-height:1.5}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:12px;text-align:center}
+.stat b{display:block;font-size:24px}
+.progress{height:12px;background:#0f1730;border-radius:99px;overflow:hidden;border:1px solid var(--border)}
+.bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#b68cff);transition:.3s}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+.btn{border:1px solid var(--border);background:var(--panel2);color:var(--text);padding:11px 14px;border-radius:12px;min-height:44px}
+.btn.primary{background:var(--accent);color:#071126;border-color:transparent;font-weight:800}
+.btn.good{background:var(--good);color:#04140e;border-color:transparent}
+.btn.warn{background:var(--warn);color:#251b00;border-color:transparent}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.topic-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.topic{padding:12px;border-radius:14px;background:var(--panel2);border:1px solid var(--border)}
+.topic .small{font-size:13px;color:var(--muted)}
+.qwrap{margin-top:16px}
+.qhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.pill{display:inline-block;padding:5px 9px;border-radius:99px;background:#25345f;color:#dce6ff;font-size:12px}
+.question{font-size:22px;line-height:1.35;margin:14px 0}
+.options{display:grid;gap:10px}
+.option{width:100%;text-align:left;padding:14px;border-radius:13px;border:1px solid var(--border);background:#18213d;color:var(--text);min-height:50px}
+.option:hover{border-color:#5874c7}
+.option.correct{border-color:var(--good);background:rgba(70,211,154,.14)}
+.option.wrong{border-color:var(--bad);background:rgba(255,111,125,.13)}
+.feedback{margin-top:14px;padding:14px;border-radius:12px;background:#10182e;border:1px solid var(--border);line-height:1.5}
+.hint{margin-top:12px;padding:12px;border-left:4px solid var(--warn);background:#191b2d;color:#fff3bf;border-radius:8px}
+.code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;background:#0c1328;border:1px solid var(--border);border-radius:12px;padding:12px;overflow:auto}
+.input-answer{width:100%;min-height:48px;border-radius:11px;border:1px solid var(--border);background:#0e1630;color:var(--text);padding:12px}
+textarea.input-answer{min-height:120px;resize:vertical}
+.mastery{height:8px;background:#0e1530;border-radius:99px;overflow:hidden;margin-top:8px}
+.mastery span{display:block;height:100%;background:var(--good)}
+.footer{color:var(--muted);font-size:13px;margin:18px 0 6px;text-align:center}
+.hidden{display:none!important}
+@media(max-width:720px){.hero{grid-template-columns:1fr}.question{font-size:19px}.wrap{padding:12px}}
+
+.logic-grid{display:grid;grid-template-columns:210px 1fr;gap:16px;align-items:center}
+.logic-inputs,.logic-builder{background:#10182e;border:1px solid var(--border);border-radius:14px;padding:14px}
+.logic-builder{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toggle-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:0}
+.toggle-row input{width:24px;height:24px}
+.gate-box{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:10px}
+.gate-box select,.sql-builder select{background:#0e1630;color:var(--text);border:1px solid var(--border);border-radius:9px;padding:9px}
+.arrow{font-size:24px;color:var(--muted)}
+.output-bulb{min-width:90px;text-align:center;padding:14px;border-radius:999px;background:#222b49;border:2px solid var(--border);font-weight:800}
+.output-bulb.on{background:rgba(70,211,154,.2);border-color:var(--good)}
+.sep{border:0;border-top:1px solid var(--border);margin:28px 0}
+.table-wrap{overflow-x:auto}
+.truth-table{width:100%;border-collapse:collapse;min-width:420px}
+.truth-table th,.truth-table td{border:1px solid var(--border);padding:11px;text-align:center}
+.truth-table th{background:#10182e}
+.truth-input,.trace-input{width:70px;text-align:center;background:#0e1630;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px}
+.truth-input.goodcell,.trace-input.goodcell{border-color:var(--good);background:rgba(70,211,154,.12)}
+.truth-input.badcell,.trace-input.badcell{border-color:var(--bad);background:rgba(255,111,125,.12)}
+.sql-builder{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
+@media(max-width:720px){.logic-grid{grid-template-columns:1fr}.logic-builder{align-items:stretch}.arrow{transform:rotate(90deg);align-self:center}}
+
+
+.coding-step{border-top:1px solid var(--border);padding-top:16px;margin-top:16px}
+.locked-step{opacity:.45;pointer-events:none}
+.unlocked-step{opacity:1;pointer-events:auto}
+
+</style>
+<style>
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{padding-bottom:env(safe-area-inset-bottom);overscroll-behavior-y:contain}
+button,select,input,textarea{touch-action:manipulation}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #ffd66b;outline-offset:2px}
+@media(max-width:600px){
+ .wrap{padding:12px 12px calc(24px + env(safe-area-inset-bottom))}
+ .card{padding:14px;border-radius:15px}
+ .hero{grid-template-columns:minmax(0,1fr)}
+ .controls{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+ .controls .btn{width:100%;min-height:50px;padding:12px 10px}
+ .controls .btn:first-child:last-child{grid-column:1/-1}
+ .option{min-height:54px;padding:13px;line-height:1.4}
+ .topic-grid{grid-template-columns:minmax(0,1fr)}
+ .logic-grid{grid-template-columns:minmax(0,1fr)}
+ .logic-builder{max-width:100%;overflow-x:auto}
+ .table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+ .truth-input,.trace-input{width:54px;min-height:44px;padding:7px}
+ .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .code{font-size:13px;overflow-x:auto}
+ input,textarea,select{max-width:100%;font-size:16px!important}
+ h1{font-size:30px}
+}
+@media(max-width:360px){.controls{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <div class="card">
+      <span class="pill">OCR GCSE Computer Science • J277/02 • 2023</span> <span class="pill">Mark scheme checked ✓</span>
+      <h1>Revision Quest</h1>
+      <p class="sub">A light-hearted quiz game covering every main skill tested on the paper. The answers and explanations are checked against OCR’s June 2023 mark scheme. Use hints if you get stuck, build a streak and level up weak topics until they turn green.</p>
+      <div class="progress"><div id="overallBar" class="bar"></div></div>
+      <div class="controls">
+        <button id="startBtn" class="btn primary">Start quest</button>
+        <button id="weakBtn" class="btn">Practise weak topics</button>
+        <button id="hardBtn" class="btn warn">Hard Mode</button>
+        <button id="resetBtn" class="btn">Reset progress</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><span>XP</span><b id="xp">0</b></div>
+        <div class="stat"><span>Level</span><b id="level">1</b></div>
+        <div class="stat"><span>Streak</span><b id="streak">0</b></div>
+        <div class="stat"><span>Correct</span><b id="correct">0</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Topic mastery</h2>
+    <div id="topics" class="topic-grid"></div>
+  </section>
+
+  <section id="quizCard" class="card qwrap hidden">
+    <div class="qhead">
+      <div>
+        <span id="topicPill" class="pill"></span>
+        <span id="paperPill" class="pill"></span>
+      </div>
+      <div id="counter" class="sub"></div>
+    </div>
+    <div id="question" class="question"></div>
+    <div id="codeBlock" class="code hidden"></div>
+    <div id="answerArea"></div>
+    <div class="controls">
+      <button id="hintBtn" class="btn warn">Use hint (-2 XP)</button>
+      <button id="checkBtn" class="btn primary hidden">Check answer</button>
+      <button id="nextBtn" class="btn good hidden">Next question</button>
+    </div>
+    <div id="hint" class="hint hidden"></div>
+    <div id="feedback" class="feedback hidden"></div>
+  </section>
+
+  
+  <section id="hardSection" class="card qwrap hidden">
+    <div class="qhead">
+      <div>
+        <span class="pill">Hard Mode</span>
+        <span class="pill">Interactive exam practice</span>
+      </div>
+      <div class="sub">Build, edit and test</div>
+    </div>
+
+    <h2 style="margin-top:14px">1. Logic circuit builder</h2>
+    <p class="sub">Make the output match: <b>Q = A AND NOT B AND C</b>. Choose each gate, toggle the inputs and test your circuit.</p>
+
+    <div class="logic-grid">
+      <div class="logic-inputs">
+        <label class="toggle-row"><span>Input A</span><input id="logicA" type="checkbox"></label>
+        <label class="toggle-row"><span>Input B</span><input id="logicB" type="checkbox"></label>
+        <label class="toggle-row"><span>Input C</span><input id="logicC" type="checkbox"></label>
+      </div>
+
+      <div class="logic-builder">
+        <div class="gate-box">
+          <label>Gate 1
+            <select id="gate1">
+              <option>AND</option>
+              <option>OR</option>
+              <option>NOT B</option>
+            </select>
+          </label>
+        </div>
+        <div class="arrow">→</div>
+        <div class="gate-box">
+          <label>Gate 2
+            <select id="gate2">
+              <option>AND C</option>
+              <option>OR C</option>
+              <option>NOT</option>
+            </select>
+          </label>
+        </div>
+        <div class="arrow">→</div>
+        <div id="logicOut" class="output-bulb">Q = 0</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="testCircuit" class="btn primary">Test circuit</button>
+      <button id="checkCircuit" class="btn good">Check against target</button>
+    </div>
+    <div id="logicFeedback" class="feedback hidden"></div>
+
+    <hr class="sep">
+
+    <h2>2. Editable truth table</h2>
+    <p class="sub">Fill in Q for <b>A OR B</b>. Then mark it.</p>
+    <div class="table-wrap">
+      <table class="truth-table">
+        <thead><tr><th>A</th><th>B</th><th>Q</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>0</td><td><input class="truth-input" data-answer="0" maxlength="1"></td></tr>
+          <tr><td>0</td><td>1</td><td><input class="truth-input" data-answer="1" maxlength="1"></td></tr>
+          <tr><td>1</td><td>0</td><td><input class="truth-input" data-answer="1" maxlength="1"></td></tr>
+          <tr><td>1</td><td>1</td><td><input class="truth-input" data-answer="1" maxlength="1"></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="controls">
+      <button id="markTruth" class="btn primary">Mark truth table</button>
+      <button id="clearTruth" class="btn">Clear</button>
+    </div>
+    <div id="truthFeedback" class="feedback hidden"></div>
+
+    <hr class="sep">
+
+    <h2>3. Trace-table challenge</h2>
+    <p class="sub">Work out the value of <b>total</b> after each loop.</p>
+    <div class="code">total = 0
+FOR i = 1 TO 4
+    total = total + i
+NEXT i</div>
+    <div class="table-wrap">
+      <table class="truth-table">
+        <thead><tr><th>i</th><th>total after loop</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><input class="trace-input" data-answer="1"></td></tr>
+          <tr><td>2</td><td><input class="trace-input" data-answer="3"></td></tr>
+          <tr><td>3</td><td><input class="trace-input" data-answer="6"></td></tr>
+          <tr><td>4</td><td><input class="trace-input" data-answer="10"></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="controls">
+      <button id="markTrace" class="btn primary">Mark trace table</button>
+      <button id="traceHint" class="btn warn">Hint</button>
+    </div>
+    <div id="traceFeedback" class="feedback hidden"></div>
+
+    <hr class="sep">
+
+    <h2>4. Fix the code</h2>
+    <p class="sub">This code is meant to total every item in a 0-indexed array called <b>scores</b>. Rewrite the broken lines.</p>
+    <div class="code">total = 0
+FOR scoreCount = 1 TO LENGTH(scores)
+    scores[scoreCount] = total + total
+NEXT scoreCount</div>
+
+    <textarea id="codeFix" class="input-answer" placeholder="Write your corrected version here..."></textarea>
+    <div class="controls">
+      <button id="checkCodeFix" class="btn primary">Check my fix</button>
+      <button id="showCodeHint" class="btn warn">Hint</button>
+    </div>
+    <div id="codeFixFeedback" class="feedback hidden"></div>
+
+    <hr class="sep">
+
+    <h2>5. SQL builder</h2>
+    <p class="sub">Build a query that selects <b>SensorID</b> from <b>events</b> where <b>Length &gt; 20</b> and <b>SensorType = 'Door'</b>.</p>
+    <div class="sql-builder">
+      <select id="sqlSelect"><option>SELECT</option></select>
+      <select id="sqlField"><option>SensorID</option><option>Length</option><option>SensorType</option></select>
+      <span>FROM</span>
+      <select id="sqlTable"><option>events</option><option>sensors</option></select>
+      <span>WHERE</span>
+      <select id="sqlCond1"><option>Length &gt; 20</option><option>Length &lt; 20</option></select>
+      <select id="sqlJoin"><option>AND</option><option>OR</option></select>
+      <select id="sqlCond2"><option>SensorType = 'Door'</option><option>SensorType = 'Window'</option></select>
+    </div>
+    <div id="sqlPreview" class="code"></div>
+    <div class="controls">
+      <button id="checkSql" class="btn primary">Run check</button>
+    </div>
+    <div id="sqlFeedback" class="feedback hidden"></div>
+
+    <hr class="sep">
+
+    <h2>6. Big Coding Question Trainer</h2>
+    <p class="sub">This section breaks a longer OCR-style programming question into smaller steps so you can learn the structure instead of guessing the whole answer at once.</p>
+
+    <div class="card" style="background:#10182e;margin-top:12px">
+      <span class="pill">OCR-style 6 marker</span>
+      <p id="bigCodingTask"><b>Task:</b></p>
+      <div class="controls">
+        <button id="newBigQuestion" class="btn">Randomise question</button>
+      </div>
+
+      <div id="codingStep1" class="coding-step">
+        <h3>Step 1: What variables do you need?</h3>
+        <p class="sub">Write the variables or data structures you think the program needs.</p>
+        <textarea id="bigCodeVars" class="input-answer" placeholder="Example: scores, total..."></textarea>
+        <div class="controls">
+          <button id="checkBigVars" class="btn primary">Check step</button>
+          <button id="hintBigVars" class="btn warn">Hint</button>
+        </div>
+        <div id="bigVarsFeedback" class="feedback hidden"></div>
+      </div>
+
+      <div id="codingStep2" class="coding-step locked-step">
+        <h3>Step 2: Write the input loop</h3>
+        <p id="bigLoopPrompt" class="sub">Write OCR-style pseudocode that inputs the values and stores them in the array.</p>
+        <textarea id="bigCodeLoop" class="input-answer" placeholder="FOR ..."></textarea>
+        <div class="controls">
+          <button id="checkBigLoop" class="btn primary">Check step</button>
+          <button id="hintBigLoop" class="btn warn">Hint</button>
+        </div>
+        <div id="bigLoopFeedback" class="feedback hidden"></div>
+      </div>
+
+      <div id="codingStep3" class="coding-step locked-step">
+        <h3>Step 3: Build the total</h3>
+        <p class="sub">Add the current array value into a running total.</p>
+        <textarea id="bigCodeTotal" class="input-answer" placeholder="total = ..."></textarea>
+        <div class="controls">
+          <button id="checkBigTotal" class="btn primary">Check step</button>
+          <button id="hintBigTotal" class="btn warn">Hint</button>
+        </div>
+        <div id="bigTotalFeedback" class="feedback hidden"></div>
+      </div>
+
+      <div id="codingStep4" class="coding-step locked-step">
+        <h3>Step 4: Calculate and output the average</h3>
+        <p id="bigAveragePrompt" class="sub">Write the final two lines.</p>
+        <textarea id="bigCodeAverage" class="input-answer" placeholder="average = ..."></textarea>
+        <div class="controls">
+          <button id="checkBigAverage" class="btn primary">Check step</button>
+          <button id="hintBigAverage" class="btn warn">Hint</button>
+        </div>
+        <div id="bigAverageFeedback" class="feedback hidden"></div>
+      </div>
+
+      <div id="fullAnswerBox" class="feedback hidden">
+        <h3>Your finished structure</h3>
+        <div id="bigFinishedCode" class="code"></div>
+        <p class="sub">The exact syntax can vary. What matters is that you earn the marks for storing the inputs, repeating the correct number of times, updating the total, calculating the average and outputting it.</p>
+      </div>
+    </div>
+
+    <div class="card" style="background:#10182e;margin-top:16px">
+      <h3>How to attack big coding questions</h3>
+      <div class="topic-grid">
+        <div class="topic"><b>1. Find the inputs</b><div class="small">Circle what data the program needs from the user.</div></div>
+        <div class="topic"><b>2. Find repetition</b><div class="small">Look for words such as each, every, 5 times or all items.</div></div>
+        <div class="topic"><b>3. Find decisions</b><div class="small">Look for words such as if, valid, correct, greater than or equal to.</div></div>
+        <div class="topic"><b>4. Find totals</b><div class="small">Running totals normally start at 0 and are updated inside a loop.</div></div>
+        <div class="topic"><b>5. Find outputs</b><div class="small">Make sure you actually output what the question asks for.</div></div>
+        <div class="topic"><b>6. Check indexes</b><div class="small">For a 0-indexed array of 5 items, the indexes are 0 to 4.</div></div>
+      </div>
+    </div>
+
+  </section>
+
+  <p class="footer">Made as a revision companion for OCR J277/02. It teaches the ideas from the paper rather than copying the paper word-for-word. Answer guidance is aligned to the official June 2023 OCR mark scheme, including valid alternative answers where appropriate.</p>
+</div>
+
+<script>
+const questions = [
+{t:"Programming languages",p:"Q1",q:"Which statement best describes a high-level language?",o:["It is tied closely to one processor architecture","It lets programmers use English-like commands","It always manipulates memory addresses directly","It is written entirely in binary"],a:1,h:"Think about which type of language is designed to be easier for humans to read.",e:"OCR awards this idea for high-level languages: they can be used across different hardware and allow English-like words. They still need translation into object or machine code."},
+{t:"Programming languages",p:"Q1",q:"Which feature is most associated with a low-level language?",o:["Direct manipulation of memory","Portability across different hardware","English-like syntax","Automatic translation by a web browser"],a:0,h:"Think about the language level that gives the programmer more direct hardware control.",e:"OCR specifically awards the point that a low-level language allows direct manipulation of memory."},
+{t:"Pseudocode & operators",p:"Q1",q:"What pseudocode correctly stores the sum of num1 and num2 in total?",o:["total = num1 + num2","num1 = total + num2","total == num1 + num2","print(num1 + num2)"],a:0,h:"The result needs to be assigned into the variable called total.",e:"OCR accepts total = num1 + num2 and other logically valid code that leaves total storing the correct sum, including reversed operands or a temporary variable."},
+{t:"Pseudocode & operators",p:"Q1",q:"Which operator checks the remainder after division and is useful for testing whether a number is even?",o:["DIV","MOD","^","-"],a:1,h:"An even number leaves a remainder of zero when divided by two.",e:"OCR accepts MOD, % or another sensible single modulus operator. A remainder of 0 after division by 2 identifies an even number."},
+{t:"Pseudocode & operators",p:"Q1",q:"Which operator can represent raising 12 to the power of 2 in OCR pseudocode?",o:["^","MOD","DIV","="],a:0,h:"You need the exponent or power operator.",e:"OCR accepts ^, ** or another sensible single operator that clearly means raising to a power."},
+{t:"Trace tables",p:"Q1",q:"A variable starts at 3. A loop prints it, subtracts 1 and repeats until the variable equals -1. What values are printed before 'Finished'?",o:["3, 2, 1, 0","3, 2, 1, 0, -1","2, 1, 0, -1","3, 2, 1"],a:0,h:"Check whether the stopping value is printed before or after the loop condition is tested.",e:"The loop prints 3, 2, 1 and 0. After 0 is printed the value becomes -1 and the loop stops."},
+{t:"Errors & debugging",p:"Q2",q:"What is a syntax error?",o:["An error in the language's grammar or rules","A program that runs but gives the wrong result","A mistake in the user's data only","A slow section of code"],a:0,h:"Think of syntax as the grammar of a programming language.",e:"A syntax error breaks the grammatical rules of the language and can prevent translation or execution."},
+{t:"Errors & debugging",p:"Q2",q:"What is a logic error?",o:["An error that always stops compilation","An error where the program runs but gives an incorrect or unexpected result","An error caused by damaged hardware","A spelling mistake in a comment"],a:1,h:"The program can still run, but its behaviour is not what was intended.",e:"Logic errors allow a program to run but cause incorrect or unexpected output."},
+{t:"Errors & debugging",p:"Q2",q:"A 0-indexed array is being totalled with a loop that starts at index 1. What is the main problem?",o:["The final item is read twice","The item at index 0 is skipped","The array becomes two-dimensional","The array is automatically sorted"],a:1,h:"In a 0-indexed array, where is the first item?",e:"The first element is at index 0, so beginning at 1 skips it."},
+{t:"Errors & debugging",p:"Q2",q:"Which corrected statement properly adds the current score into a running total?",o:["scores[scoreCount] = total + total","total = total + scores[scoreCount]","total = scoreCount + scoreCount","scores = total"],a:1,h:"The running total should be updated, not the array element.",e:"total = total + scores[scoreCount] keeps the previous total and adds the current array value."},
+{t:"Sorting algorithms",p:"Q3",q:"Why is a temp variable used while swapping two values?",o:["To permanently duplicate the whole array","To hold one value so it is not lost when another value overwrites its position","To count how many swaps happen","To convert strings into integers"],a:1,h:"Imagine replacing one value before you have copied it somewhere safe.",e:"temp temporarily stores a value while positions are overwritten, preventing that value from being lost."},
+{t:"Sorting algorithms",p:"Q3",q:"Why does the inner loop in insertion sort suit a condition-controlled loop?",o:["The exact number of swaps is not known beforehand","Every array always has exactly two items","It must always run exactly ten times","Condition-controlled loops cannot compare values"],a:0,h:"Think about whether you can know in advance how far an item needs to move.",e:"An inserted item may need a different number of swaps each time, so the loop continues until the condition is met."},
+{t:"Sorting algorithms",p:"Q3",q:"Which description best matches bubble sort?",o:["It repeatedly compares neighbouring values and swaps them when needed","It always splits the list exactly in half","It searches one item at a time without sorting","It only works on numbers"],a:0,h:"Picture larger values gradually moving towards one end of the list.",e:"Bubble sort repeatedly compares adjacent values and swaps them, usually over multiple passes."},
+{t:"Sorting algorithms",p:"Q3",q:"Which is a valid similarity between insertion sort and bubble sort?",o:["Both require recursion","Both compare values and can swap items","Both are divide-and-conquer algorithms","Both only work on already sorted data"],a:1,h:"Focus on a basic action both algorithms perform.",e:"Both compare values and can move or swap items while building a sorted list."},
+{t:"Logic gates",p:"Q4",q:"The floodlight should turn on when motion is detected, it is night and the switch is on. If A=motion, B=daylight and C=switch, which expression is correct?",o:["A AND B AND C","A AND NOT B AND C","A OR B OR C","NOT A AND B AND C"],a:1,h:"Nighttime means the daylight input must be the opposite of 1.",e:"The OCR mark scheme accepts equivalent circuits for Q = A AND NOT B AND C, including different groupings that produce the same output."},
+{t:"Logic gates",p:"Q4",q:"A truth table outputs 1 for 01, 10 and 11 but 0 for 00. Which gate is it?",o:["AND","OR","NOT","XOR only"],a:1,h:"The output is 1 when at least one input is 1.",e:"OR outputs 1 whenever one or both inputs are 1."},
+{t:"Logic gates",p:"Q4",q:"A truth table outputs 1 only when both inputs are 1. Which gate is it?",o:["OR","AND","NOT","NOR"],a:1,h:"Both conditions need to be true at the same time.",e:"AND only outputs 1 when both inputs are 1."},
+{t:"Testing",p:"Q5",q:"Why should a program be tested before release?",o:["To make the source code longer","To find faults and check the program meets requirements","To guarantee it never needs updates","To replace all validation"],a:1,h:"Testing is about checking behaviour before users rely on the program.",e:"Testing helps find bugs and confirms that the program works as intended and meets requirements."},
+{t:"Testing",p:"Q5",q:"Which test type uses data right on the edge of acceptable values?",o:["Normal testing","Boundary testing","Presence checking","Black-box programming"],a:1,h:"The key word is 'edge'.",e:"Boundary testing checks values at or around the limits of valid input."},
+{t:"IDEs",p:"Q5",q:"Which IDE feature lets you execute a program one line at a time?",o:["Stepping","Pretty printing","Auto-save","File compression"],a:0,h:"Debuggers can move through execution in small stages.",e:"Stepping runs the program line by line so you can inspect what happens."},
+{t:"IDEs",p:"Q5",q:"Which IDE feature shows the current contents of variables while debugging?",o:["Variable watch","Syntax colouring","File explorer","Compiler optimisation"],a:0,h:"The name of the feature describes watching variable values.",e:"A variable watch displays the current data stored in selected variables."},
+{t:"Validation",p:"Q5",q:"In the adding game, answers can sensibly be from 2 to 20. Which validation method checks that?",o:["Range check","Presence check","Length check","Format check"],a:0,h:"The check is about minimum and maximum allowed values.",e:"A range check verifies that a value is within chosen lower and upper limits."},
+{t:"Validation",p:"Q5",q:"Which validation method makes sure the player's answer is a whole number rather than text?",o:["Type check","Presence check","Length check","Lookup check"],a:0,h:"This asks whether the input is the correct kind of data.",e:"A type check verifies that the input has the required data type, such as an integer."},
+{t:"Algorithm design",p:"Q5",q:"Which order best describes the core of the three-question adding game?",o:["Set score to 0 → repeat 3 times: generate 2 random numbers, get answer, check it, add 1 if correct → output score","Output score → set score to 0 → generate one random number","Generate one fixed question → add 3 to score → stop","Set score to 3 → subtract 1 for every correct answer"],a:0,h:"The score starts empty and each of the three questions should use fresh random numbers.",e:"The mark scheme rewards initialising score, generating two random values, inputting an answer, checking it, adding to score when correct, repeating three times and outputting the score."},
+{t:"Data types",p:"Q6",q:"What is the best data type for UserName such as Admin123?",o:["String","Integer","Boolean","Real"],a:0,h:"The value contains multiple characters including letters.",e:"A username is text, so String is the appropriate type."},
+{t:"Data types",p:"Q6",q:"Why should a telephone number normally be stored as a string rather than an integer?",o:["It may contain symbols such as + and is not used for arithmetic","Strings always use less memory","Integers cannot contain digits","Strings automatically encrypt the number"],a:0,h:"A phone number is an identifier, not something you calculate with.",e:"Phone numbers can include symbols and leading zeroes and are not used for arithmetic, so String is suitable."},
+{t:"Data types",p:"Q6",q:"What is the best data type for DoorSensorActive?",o:["Boolean","Real","String","Integer"],a:0,h:"The sensor is either active or not active.",e:"Boolean stores two-state values such as True and False."},
+{t:"Data types",p:"Q6",q:"DoorActiveTime stores a whole number of seconds. What is the best data type?",o:["Integer","Boolean","Char","Real"],a:0,h:"The value is counted to the nearest whole second.",e:"A whole-number count is appropriately stored as an Integer."},
+{t:"Selection & Boolean logic",p:"Q6",q:"When should SoundAlarm() be called?",o:["When SystemArmed is true AND either DoorSensorActive OR WindowSensorActive is true","Whenever WindowSensorActive is true even if the system is disarmed","Only when both sensors are inactive","Whenever SystemArmed is false"],a:0,h:"The system must be armed and at least one sensor must be active.",e:"The alarm must only sound when the system is armed and at least one sensor is active. OCR accepts logically equivalent selection structures, not just one exact layout."},
+{t:"Programming constructs",p:"Q6",q:"In sensorID = sensorType + sensorNumber, what operation is being used when both values are strings?",o:["Concatenation","Iteration","Casting","Selection"],a:0,h:"Two pieces of text are being joined together.",e:"Concatenation joins strings to form a longer string."},
+{t:"Programming constructs",p:"Q6",q:"A function called CheckSensorCode() decides whether a code is valid. What data type should it return?",o:["Boolean","Integer","String","Real"],a:0,h:"A validity check has two possible states.",e:"The natural return type is Boolean because the code is either valid or invalid."},
+{t:"Programming constructs",p:"Q6",q:"Which two constructs are definitely present in a program containing input statements followed by an IF statement?",o:["Sequence and selection","Iteration and recursion","Casting and sorting","Compilation and validation"],a:0,h:"Instructions happen in order and an IF chooses a path.",e:"Sequence is the ordered execution of statements and selection is choosing a branch such as IF."},
+{t:"SQL",p:"Q6",q:"Which SQL query selects the SensorID of door events lasting more than 20 seconds?",o:["SELECT SensorID FROM events WHERE Length > 20 AND SensorType = 'Door';","SELECT events FROM SensorID WHERE Length < 20;","UPDATE events SET SensorType = 'Door';","SELECT Length FROM Door WHERE SensorID > 20;"],a:0,h:"You need SELECT, the events table and two conditions joined with AND.",e:"The correct query selects SensorID from events and filters by both Length > 20 and SensorType = 'Door'."},
+{t:"File handling",p:"Q6",q:"What are the essential steps inside SaveLogs(data, filename)?",o:["Open the named file for writing, write data, close the file","Open the database, delete data, restart the program","Print the filename only","Convert the file to an integer"],a:0,h:"Think of the normal file-handling lifecycle.",e:"The procedure needs two parameters then opens the file, writes the supplied data and closes the file."},
+{t:"Casting",p:"Q6",q:"What is the process called when integer data is changed into string data?",o:["Casting","Concatenation","Selection","Iteration"],a:0,h:"This is a change from one data type to another.",e:"Changing a value from one data type to another is called casting or type casting."},
+{t:"2D arrays",p:"Q6",q:"A 2D array stores event rows as [Date, SensorID, SensorType, Length]. Which column contains Length?",o:["0","1","2","3"],a:3,h:"The array is 0-indexed. Count Date as column 0.",e:"Date=0, SensorID=1, SensorType=2 and Length=3."},
+{t:"2D arrays",p:"Q6",q:"To total sensor time for a chosen date, what should the algorithm do?",o:["Loop through all event rows, compare each row's date and add its Length when the date matches","Only inspect the first event row","Sort the dates alphabetically and stop","Add every Length without checking the date"],a:0,h:"Each event needs to be checked against the date entered by the user.",e:"The algorithm should visit all rows, compare column 0 with the chosen date and add column 3 when they match."}
+];
+
+const topicNames=[...new Set(questions.map(q=>q.t))];
+let state={xp:0,streak:0,correct:0,answered:0,mastery:{},seen:[],mode:"all"};
+try{const s=JSON.parse(localStorage.getItem("j277quest")||"null"); if(s) state={...state,...s};}catch(e){}
+topicNames.forEach(t=>{if(!state.mastery[t])state.mastery[t]={c:0,a:0};});
+
+let order=[], idx=0, current=null, locked=false, hintUsed=false;
+
+const el=id=>document.getElementById(id);
+function save(){localStorage.setItem("j277quest",JSON.stringify(state));}
+function level(){return Math.floor(state.xp/100)+1}
+function masteryPct(t){const m=state.mastery[t]; return m.a?Math.round(m.c/m.a*100):0}
+function renderStats(){
+ el("xp").textContent=state.xp; el("level").textContent=level(); el("streak").textContent=state.streak; el("correct").textContent=state.correct;
+ const pct=questions.length?Math.min(100,Math.round((new Set(state.seen)).size/questions.length*100)):0;
+ el("overallBar").style.width=pct+"%";
+ el("topics").innerHTML=topicNames.map(t=>{const p=masteryPct(t);return `<div class="topic"><b>${t}</b><div class="small">${p}% mastery • ${state.mastery[t].a} attempts</div><div class="mastery"><span style="width:${p}%"></span></div></div>`}).join("");
+}
+function shuffled(a){return [...a].sort(()=>Math.random()-.5)}
+function start(mode="all"){
+ state.mode=mode; idx=0;
+ if(mode==="weak"){
+   const weak=topicNames.filter(t=>state.mastery[t].a===0||masteryPct(t)<80);
+   order=shuffled(questions.map((q,i)=>({q,i})).filter(x=>weak.includes(x.q.t)).map(x=>x.i));
+   if(!order.length) order=shuffled(questions.map((_,i)=>i));
+ } else order=shuffled(questions.map((_,i)=>i));
+ el("quizCard").classList.remove("hidden"); show();
+ el("quizCard").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function show(){
+ if(idx>=order.length){
+   el("question").textContent="Quest complete! You have worked through this round.";
+   el("answerArea").innerHTML="";
+   el("hintBtn").classList.add("hidden"); el("nextBtn").classList.add("hidden"); el("checkBtn").classList.add("hidden");
+   el("feedback").classList.remove("hidden"); el("feedback").innerHTML=`Round score: <b>${state.correct}</b> correct overall. Use <b>Practise weak topics</b> to target anything below 80% mastery.`;
+   return;
+ }
+ current=questions[order[idx]]; locked=false; hintUsed=false;
+ el("topicPill").textContent=current.t; el("paperPill").textContent=current.p; el("counter").textContent=`${idx+1} / ${order.length}`;
+ el("question").textContent=current.q; el("hint").classList.add("hidden"); el("feedback").classList.add("hidden");
+ el("nextBtn").classList.add("hidden"); el("hintBtn").classList.remove("hidden"); el("hintBtn").disabled=false; el("checkBtn").classList.add("hidden");
+ el("codeBlock").classList.add("hidden");
+ el("answerArea").innerHTML=current.o.map((x,i)=>`<button class="option" data-i="${i}">${String.fromCharCode(65+i)}. ${x}</button>`).join("");
+ document.querySelectorAll(".option").forEach(b=>b.addEventListener("click",()=>answer(Number(b.dataset.i),b)));
+}
+function answer(choice,btn){
+ if(locked)return; locked=true;
+ document.querySelectorAll(".option").forEach((b,i)=>{b.disabled=true;if(i===current.a)b.classList.add("correct");});
+ const good=choice===current.a; if(!good)btn.classList.add("wrong");
+ state.answered++; state.mastery[current.t].a++;
+ if(good){state.correct++;state.streak++;state.mastery[current.t].c++;state.xp+=hintUsed?8:10;}
+ else{state.streak=0;}
+ state.seen.push(order[idx]);
+ el("feedback").classList.remove("hidden");
+ el("feedback").innerHTML=(good?`<b>Nice one. +${hintUsed?8:10} XP.</b> `:`<b>Not quite.</b> `)+current.e;
+ el("nextBtn").classList.remove("hidden"); el("hintBtn").disabled=true;
+ save();renderStats();
+}
+el("hintBtn").addEventListener("click",()=>{
+ if(hintUsed||locked)return; hintUsed=true; state.xp=Math.max(0,state.xp-2); el("hint").textContent=current.h; el("hint").classList.remove("hidden"); el("hintBtn").disabled=true; save();renderStats();
+});
+el("nextBtn").addEventListener("click",()=>{idx++;show()});
+el("startBtn").addEventListener("click",()=>start("all"));
+el("weakBtn").addEventListener("click",()=>start("weak"));
+el("resetBtn").addEventListener("click",()=>{
+ if(confirm("Reset all XP, streaks and topic mastery?")){
+   state={xp:0,streak:0,correct:0,answered:0,mastery:{},seen:[],mode:"all"};
+   topicNames.forEach(t=>state.mastery[t]={c:0,a:0}); save();renderStats(); el("quizCard").classList.add("hidden");
+ }
+});
+renderStats();
+
+function showHard(){
+  el("hardSection").classList.remove("hidden");
+  el("quizCard").classList.add("hidden");
+  el("hardSection").scrollIntoView({behavior:"smooth",block:"start"});
+}
+el("hardBtn").addEventListener("click",showHard);
+
+function gateOne(a,b,type){
+  if(type==="AND") return a && b;
+  if(type==="OR") return a || b;
+  if(type==="NOT B") return a && !b;
+  return false;
+}
+function gateTwo(x,c,type){
+  if(type==="AND C") return x && c;
+  if(type==="OR C") return x || c;
+  if(type==="NOT") return !x;
+  return false;
+}
+function updateCircuit(){
+  const a=el("logicA").checked,b=el("logicB").checked,c=el("logicC").checked;
+  const x=gateOne(a,b,el("gate1").value);
+  const q=gateTwo(x,c,el("gate2").value);
+  el("logicOut").textContent="Q = "+(q?1:0);
+  el("logicOut").classList.toggle("on",q);
+  return {a,b,c,q};
+}
+["logicA","logicB","logicC","gate1","gate2"].forEach(id=>el(id).addEventListener("change",updateCircuit));
+el("testCircuit").addEventListener("click",updateCircuit);
+el("checkCircuit").addEventListener("click",()=>{
+  let allGood=true;
+  for(let n=0;n<8;n++){
+    const a=!!(n&4), b=!!(n&2), c=!!(n&1);
+    const x=gateOne(a,b,el("gate1").value);
+    const q=gateTwo(x,c,el("gate2").value);
+    const target=a && !b && c;
+    if(q!==target){allGood=false;break;}
+  }
+  el("logicFeedback").classList.remove("hidden");
+  el("logicFeedback").innerHTML=allGood
+    ? "<b>Perfect.</b> Your circuit matches A AND NOT B AND C for all 8 input combinations."
+    : "<b>Not quite.</b> Your circuit works for some inputs but fails at least one combination. Try thinking about where NOT B must happen.";
+});
+
+el("markTruth").addEventListener("click",()=>{
+  let score=0;
+  document.querySelectorAll(".truth-input").forEach(inp=>{
+    const ok=inp.value.trim()===inp.dataset.answer;
+    inp.classList.toggle("goodcell",ok); inp.classList.toggle("badcell",!ok);
+    if(ok)score++;
+  });
+  el("truthFeedback").classList.remove("hidden");
+  el("truthFeedback").innerHTML=`You got <b>${score}/4</b>. OR outputs 1 when at least one input is 1.`;
+});
+el("clearTruth").addEventListener("click",()=>{
+  document.querySelectorAll(".truth-input").forEach(inp=>{inp.value="";inp.classList.remove("goodcell","badcell")});
+  el("truthFeedback").classList.add("hidden");
+});
+
+el("markTrace").addEventListener("click",()=>{
+  let score=0;
+  document.querySelectorAll(".trace-input").forEach(inp=>{
+    const ok=inp.value.trim()===inp.dataset.answer;
+    inp.classList.toggle("goodcell",ok); inp.classList.toggle("badcell",!ok);
+    if(ok)score++;
+  });
+  el("traceFeedback").classList.remove("hidden");
+  el("traceFeedback").innerHTML=`You got <b>${score}/4</b>. The totals should build as 1, 3, 6 and 10.`;
+});
+el("traceHint").addEventListener("click",()=>{
+  el("traceFeedback").classList.remove("hidden");
+  el("traceFeedback").textContent="Hint: each row keeps the previous total, then adds the current value of i.";
+});
+
+el("showCodeHint").addEventListener("click",()=>{
+  el("codeFixFeedback").classList.remove("hidden");
+  el("codeFixFeedback").textContent="Hint: a 0-indexed array starts at 0, and the running total should be updated using the current array item.";
+});
+el("checkCodeFix").addEventListener("click",()=>{
+  const s=el("codeFix").value.toLowerCase().replace(/\s+/g," ");
+  const hasStart=/scorecount\s*=\s*0/.test(s);
+  const hasTotal=/total\s*=\s*total\s*\+\s*scores\s*\[\s*scorecount\s*\]/.test(s);
+  el("codeFixFeedback").classList.remove("hidden");
+  if(hasStart && hasTotal){
+    el("codeFixFeedback").innerHTML="<b>That fixes the two key errors.</b> You start at index 0 and add the current score into total.";
+  } else {
+    el("codeFixFeedback").innerHTML="<b>Still needs a tweak.</b> Check both the starting index and which variable gets updated on the line inside the loop.";
+  }
+});
+
+function updateSql(){
+  const q=`${el("sqlSelect").value} ${el("sqlField").value} FROM ${el("sqlTable").value} WHERE ${el("sqlCond1").value} ${el("sqlJoin").value} ${el("sqlCond2").value};`;
+  el("sqlPreview").textContent=q;
+  return q;
+}
+["sqlField","sqlTable","sqlCond1","sqlJoin","sqlCond2"].forEach(id=>el(id).addEventListener("change",updateSql));
+el("checkSql").addEventListener("click",()=>{
+  const good=el("sqlField").value==="SensorID" && el("sqlTable").value==="events" &&
+    el("sqlCond1").value==="Length > 20" && el("sqlJoin").value==="AND" &&
+    el("sqlCond2").value==="SensorType = 'Door'";
+  el("sqlFeedback").classList.remove("hidden");
+  el("sqlFeedback").innerHTML=good
+    ? "<b>Correct query.</b> That matches the conditions used in the OCR paper."
+    : "<b>Not yet.</b> Check the selected field, table and both WHERE conditions.";
+});
+updateCircuit();
+updateSql();
+
+
+
+function unlockStep(id){
+  const s=el(id);
+  s.classList.remove("locked-step");
+  s.classList.add("unlocked-step");
+}
+
+const bigQuestionTemplates = [
+  {item:"test score", items:"test scores", array:"scores", total:"total", counter:"i", average:"average"},
+  {item:"temperature", items:"temperatures", array:"temps", total:"sum", counter:"index", average:"mean"},
+  {item:"race time", items:"race times", array:"times", total:"totalTime", counter:"pos", average:"averageTime"},
+  {item:"game score", items:"game scores", array:"gameScores", total:"scoreTotal", counter:"count", average:"meanScore"},
+  {item:"distance", items:"distances", array:"distances", total:"distanceTotal", counter:"x", average:"averageDistance"},
+  {item:"reaction time", items:"reaction times", array:"reactions", total:"reactionTotal", counter:"n", average:"meanReaction"}
+];
+
+let bigQ = null;
+
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function generateBigQuestion(){
+  const base = pick(bigQuestionTemplates);
+  const count = pick([4,5,6,7,8,10]);
+  bigQ = {...base, count};
+
+  el("bigCodingTask").innerHTML =
+    `<b>Task:</b> Write an algorithm that asks the user for <b>${count} ${base.items}</b>, stores them in an array, finds the total and outputs the average.`;
+
+  el("bigLoopPrompt").innerHTML =
+    `Write OCR-style pseudocode that inputs <b>${count} ${base.items}</b> and stores them in the array <b>${base.array}</b>.`;
+
+  el("bigAveragePrompt").innerHTML =
+    `Calculate the average using <b>${base.total}</b> and output <b>${base.average}</b>.`;
+
+  el("bigCodeVars").placeholder = `Think about: ${base.array}, ${base.total}...`;
+  el("bigCodeLoop").placeholder = `FOR ${base.counter} = 0 TO ${count-1} ...`;
+  el("bigCodeTotal").placeholder = `${base.total} = ...`;
+  el("bigCodeAverage").placeholder = `${base.average} = ...`;
+
+  ["bigCodeVars","bigCodeLoop","bigCodeTotal","bigCodeAverage"].forEach(id=>el(id).value="");
+  ["bigVarsFeedback","bigLoopFeedback","bigTotalFeedback","bigAverageFeedback","fullAnswerBox"].forEach(id=>el(id).classList.add("hidden"));
+
+  ["codingStep2","codingStep3","codingStep4"].forEach(id=>{
+    el(id).classList.add("locked-step");
+    el(id).classList.remove("unlocked-step");
+  });
+
+  el("bigFinishedCode").textContent =
+`${base.array} = []
+${base.total} = 0
+
+FOR ${base.counter} = 0 TO ${count-1}
+    ${base.array}[${base.counter}] = input("Enter ${base.item}")
+    ${base.total} = ${base.total} + ${base.array}[${base.counter}]
+NEXT ${base.counter}
+
+${base.average} = ${base.total} / ${count}
+output(${base.average})`;
+}
+
+el("newBigQuestion").addEventListener("click", generateBigQuestion);
+
+el("hintBigVars").addEventListener("click",()=>{
+  el("bigVarsFeedback").classList.remove("hidden");
+  el("bigVarsFeedback").textContent =
+    `Hint: you need an array for all ${bigQ.count} ${bigQ.items} and a variable for the running total.`;
+});
+
+el("checkBigVars").addEventListener("click",()=>{
+  const s=el("bigCodeVars").value.toLowerCase();
+  const ok=s.includes(bigQ.array.toLowerCase()) && s.includes(bigQ.total.toLowerCase());
+  el("bigVarsFeedback").classList.remove("hidden");
+  if(ok){
+    el("bigVarsFeedback").innerHTML="<b>Good.</b> You identified the array and the running total.";
+    unlockStep("codingStep2");
+  } else {
+    el("bigVarsFeedback").innerHTML=`<b>Nearly.</b> Include variables for <b>${bigQ.array}</b> and <b>${bigQ.total}</b>.`;
+  }
+});
+
+el("hintBigLoop").addEventListener("click",()=>{
+  el("bigLoopFeedback").classList.remove("hidden");
+  el("bigLoopFeedback").textContent =
+    `Hint: there are ${bigQ.count} values. With a 0-indexed array, loop from 0 to ${bigQ.count-1}.`;
+});
+
+el("checkBigLoop").addEventListener("click",()=>{
+  const raw=el("bigCodeLoop").value.toLowerCase();
+  const s=raw.replace(/\s+/g," ");
+  const loop=s.includes("for") && s.includes("0") && s.includes(String(bigQ.count-1));
+  const input=s.includes("input");
+  const array=s.includes(bigQ.array.toLowerCase());
+  el("bigLoopFeedback").classList.remove("hidden");
+  if(loop && input && array){
+    el("bigLoopFeedback").innerHTML="<b>That has the right structure.</b> You repeat the correct number of times and store each input.";
+    unlockStep("codingStep3");
+  } else {
+    el("bigLoopFeedback").innerHTML=`<b>Check the structure.</b> Loop from 0 to ${bigQ.count-1}, use input and store each value in ${bigQ.array}.`;
+  }
+});
+
+el("hintBigTotal").addEventListener("click",()=>{
+  el("bigTotalFeedback").classList.remove("hidden");
+  el("bigTotalFeedback").textContent =
+    `Hint: keep the old value of ${bigQ.total} and add the current ${bigQ.array} item onto it.`;
+});
+
+el("checkBigTotal").addEventListener("click",()=>{
+  const s=el("bigCodeTotal").value.toLowerCase().replace(/\s+/g,"");
+  const total=bigQ.total.toLowerCase();
+  const arr=bigQ.array.toLowerCase();
+  const ok=s.includes(`${total}=${total}+`) && s.includes(arr);
+  el("bigTotalFeedback").classList.remove("hidden");
+  if(ok){
+    el("bigTotalFeedback").innerHTML="<b>Exactly.</b> That is the running-total pattern.";
+    unlockStep("codingStep4");
+  } else {
+    el("bigTotalFeedback").innerHTML=`<b>Try again.</b> Update ${bigQ.total} using its old value plus the current item from ${bigQ.array}.`;
+  }
+});
+
+el("hintBigAverage").addEventListener("click",()=>{
+  el("bigAverageFeedback").classList.remove("hidden");
+  el("bigAverageFeedback").textContent =
+    `Hint: divide ${bigQ.total} by ${bigQ.count}, store it in ${bigQ.average} and output it.`;
+});
+
+el("checkBigAverage").addEventListener("click",()=>{
+  const s=el("bigCodeAverage").value.toLowerCase().replace(/\s+/g," ");
+  const avgName=bigQ.average.toLowerCase();
+  const totalName=bigQ.total.toLowerCase();
+  const avg=s.includes(avgName) && s.includes(totalName) &&
+    (s.includes(`/ ${bigQ.count}`) || s.includes(`/${bigQ.count}`));
+  const out=s.includes("output") || s.includes("print");
+
+  el("bigAverageFeedback").classList.remove("hidden");
+  if(avg && out){
+    el("bigAverageFeedback").innerHTML="<b>Finished.</b> Same method, different question. That is the pattern you want to remember.";
+    el("fullAnswerBox").classList.remove("hidden");
+  } else {
+    el("bigAverageFeedback").innerHTML=`<b>Almost.</b> Calculate ${bigQ.total} divided by ${bigQ.count}, store it in ${bigQ.average} and output it.`;
+  }
+});
+
+generateBigQuestion();
+</script>
+<script>
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
