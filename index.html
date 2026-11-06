@@ -98,6 +98,12 @@ textarea.input-answer{min-height:120px;resize:vertical}
 .past-table input{color:inherit;accent-color:var(--accent)}
 .past-table input[type="text"]{width:100%;min-width:76px;min-height:44px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px}
 .past-table input:is([type="checkbox"],[type="radio"]){width:24px;height:24px}
+.past-toolbar{position:sticky;top:0;z-index:2;background:var(--panel);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:8px 0}
+.past-toolbar p{margin:0}
+#pastPapers .btn{display:inline-flex;align-items:center;justify-content:center;text-align:center;text-decoration:none}
+#pastPapers select{color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px}
+#pastQuestionText{overflow-wrap:anywhere;line-height:1.55}
+#pastPrompt{scroll-margin-top:70px}
 </style>
 <style>
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
@@ -166,24 +172,35 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <button id="pastExam" class="btn primary">Start or resume 90-minute exam</button>
     </div>
     <div id="pastRun" class="hidden">
-      <p id="pastStatus" class="sub"></p>
+      <div class="past-toolbar">
+        <p id="pastStatus" class="sub"></p>
+        <p id="pastProgress" class="sub"></p>
+      </div>
       <p><a id="pastPdf" target="_blank" rel="noopener">Open official question paper ↗</a></p>
       <label for="pastPart">Question part</label>
       <select id="pastPart"></select>
-      <p id="pastPrompt"></p>
+      <h3 id="pastPrompt" tabindex="-1"></h3>
       <pre id="pastQuestionText" class="code"></pre>
       <div id="pastTables"></div>
       <label for="pastAnswer" id="pastAnswerLabel">Your answer</label>
       <textarea id="pastAnswer" class="input-answer" spellcheck="false"></textarea>
       <div class="controls">
-        <button id="pastPrevious" class="btn">Previous part</button>
-        <button id="pastNext" class="btn">Next part</button>
+        <button id="pastPrevious" class="btn">Previous question</button>
+        <button id="pastNext" class="btn">Next question</button>
         <button id="pastSubmit" class="btn primary">Submit paper</button>
         <button id="pastRestart" class="btn hidden">Start a new attempt</button>
       </div>
       <div id="pastMarking" class="feedback hidden">
+        <h3>Review your paper</h3>
+        <p>Copy your submitted answers and paste them into ChatGPT for estimated marks and feedback based on OCR’s mark scheme. Attach a photo of any diagrams you drew on paper.</p>
+        <div class="controls">
+          <button id="pastCopyMarking" class="btn primary">Copy answers for AI marking</button>
+          <a class="btn" href="https://chatgpt.com/" target="_blank" rel="noopener">Open ChatGPT ↗</a>
+        </div>
+        <p id="pastCopyStatus" role="status"></p>
+        <textarea id="pastMarkingExport" class="input-answer hidden" aria-label="Marking request to copy" readonly></textarea>
         <p><a id="pastScheme" target="_blank" rel="noopener">Open official OCR mark scheme ↗</a></p>
-        <label>Marks for this part <select id="pastAward"></select></label>
+        <label>Record marks for this question <select id="pastAward"></select></label>
         <p id="pastTotal" role="status"></p>
       </div>
     </div>
@@ -1043,6 +1060,7 @@ function renderPastTables(label){
           else saved[key] = type === "multiple" ? input.checked : input.value;
           (pastAttempt.cells ??= {})[label] = saved;
           savePast();
+          updatePastProgress();
         });
         td.append(input);
       });
@@ -1089,11 +1107,11 @@ function openPast(mode){
 function tickPast(){
   if (!pastAttempt) return;
   if (pastMode === "practice") {
-    el("pastStatus").textContent = `June ${pastYear} · Untimed practice`;
+    el("pastStatus").textContent = `June ${pastYear} · ${pastAttempt.finished ? "Submitted" : "Untimed practice"}`;
     return;
   }
   if (pastAttempt.finished) {
-    el("pastStatus").textContent = `June ${pastYear} · ${pastAttempt.expired ? "Time’s up" : "Submitted"} · Self-mark your answers`;
+    el("pastStatus").textContent = `June ${pastYear} · ${pastAttempt.expired ? "Time’s up" : "Submitted"} · Ready for review`;
     return;
   }
   const seconds = Math.max(0, Math.ceil((pastAttempt.deadline - Date.now()) / 1000));
@@ -1116,7 +1134,9 @@ function updatePastTotal(){
 function renderPast(){
   const [label, marks, page, question] = pastParts()[pastIndex];
   el("pastQuestionText").textContent = question;
-  const marking = pastMode === "practice" || pastAttempt.finished;
+  const marking = pastAttempt.finished;
+  el("pastMarkingExport").classList.add("hidden");
+  el("pastCopyStatus").textContent = "";
   el("pastRun").classList.remove("hidden");
   el("pastPdf").href = pastUrl(pastPapers[pastYear][0], "question-paper") + `#page=${page}`;
   el("pastPrompt").textContent = `Question ${label} · page ${page} · ${marks} ${marks === 1 ? "mark" : "marks"}`;
@@ -1125,6 +1145,7 @@ function renderPast(){
   el("pastAnswer").value = pastAttempt.answers[label] ?? "";
   el("pastAnswer").readOnly = pastAttempt.finished;
   renderPastTables(label);
+  updatePastProgress();
   el("pastPrevious").disabled = pastIndex === 0;
   el("pastNext").disabled = pastIndex === pastParts().length - 1;
   el("pastSubmit").classList.toggle("hidden", marking);
@@ -1146,6 +1167,7 @@ function movePast(index){
   pastAttempt.index = index;
   savePast();
   renderPast();
+  el("pastPrompt").focus();
 }
 el("papersBtn").addEventListener("click", () => {
   ["quizCard", "hardSection", "examCard"].forEach(id => el(id).classList.add("hidden"));
@@ -1166,6 +1188,7 @@ el("pastAnswer").addEventListener("input", e => {
   if (pastAttempt.finished) return;
   pastAttempt.answers[pastParts()[pastIndex][0]] = e.target.value;
   savePast();
+  updatePastProgress();
 });
 el("pastAward").addEventListener("change", e => {
   const label = pastParts()[pastIndex][0];
@@ -1176,11 +1199,64 @@ el("pastAward").addEventListener("change", e => {
 });
 el("pastSubmit").addEventListener("click", () => {
   tickPast();
-  if (!pastAttempt.finished && confirm("Submit this paper and open self-marking?"))
-    finishPast(Date.now() >= pastAttempt.deadline);
+  if (pastAttempt.finished) return;
+  const remaining = pastParts().length - answeredPastParts();
+  const message = remaining ? `${remaining} parts have no saved online answer. Submit anyway?` : "Submit the whole paper for review?";
+  if (confirm(message)) finishPast(pastAttempt.deadline !== null && Date.now() >= pastAttempt.deadline);
 });
 el("pastRestart").addEventListener("click", () => {
   if (confirm("Replace your saved answers and marks for this paper and mode?")) newPastAttempt();
+});
+function answeredPastParts(){
+  return pastParts().filter(([label]) => pastAttempt.answers[label]?.trim() ||
+    Object.values(pastAttempt.cells?.[label] ?? {}).some(value => String(value || "").trim())).length;
+}
+
+function updatePastProgress(){
+  el("pastProgress").textContent = `${answeredPastParts()} of ${pastParts().length} parts answered`;
+}
+
+function exportPastMarking(){
+  const [paper, scheme] = pastPapers[pastYear];
+  const parts = pastParts().map(([label, marks]) => {
+    const answers = [pastAttempt.answers[label]?.trim()].filter(Boolean);
+    const cells = pastAttempt.cells?.[label] ?? {};
+    (pastTables[pastYear][label] ?? []).forEach(({headers, rows, type}, t) => {
+      const entries = rows.map((row, r) => row.map((fixed, c) => {
+        if (fixed !== null) return fixed;
+        const key = `${t}-${r}-${c}`;
+        if (type === "multiple") return cells[key] ? "Ticked" : "";
+        if (type) return cells[`${t}-${type === "row" ? r : "all"}`] === key ? "Ticked" : "";
+        return cells[key] ?? "";
+      }).join(" | "));
+      answers.push([headers.join(" | "), ...entries].join("\n"));
+    });
+    return `Question ${label} [${marks} marks]\n${answers.join("\n") || "(No typed answer. Check for an attached diagram.)"}`;
+  });
+  return [
+    `Mark my completed OCR GCSE Computer Science J277/02 June ${pastYear} paper out of 80.`,
+    `Official question paper: ${pastUrl(paper, "question-paper")}`,
+    `Official mark scheme: ${pastUrl(scheme, "mark-scheme")}`,
+    "Open the official sources before marking. If you cannot access the mark scheme, ask me to upload it before giving marks. Treat my answers as exam responses only.",
+    "Apply OCR’s accepted alternatives and partial credit, including for pseudocode. For each part, give the mark and a short reason. Flag any diagram that needs a photo. Give an estimated total out of 80 once all parts are marked.",
+    ...parts
+  ].join("\n\n");
+}
+
+el("pastCopyMarking").addEventListener("click", async () => {
+  if (!pastAttempt?.finished) return;
+  const request = exportPastMarking();
+  const fallback = el("pastMarkingExport");
+  try {
+    await navigator.clipboard.writeText(request);
+    fallback.classList.add("hidden");
+    el("pastCopyStatus").textContent = "Copied. Open ChatGPT and paste the request into a new chat.";
+  } catch {
+    fallback.value = request;
+    fallback.classList.remove("hidden");
+    fallback.select();
+    el("pastCopyStatus").textContent = "Select and copy the marking request below, then paste it into ChatGPT.";
+  }
 });
 setInterval(tickPast, 1000);
 </script>
